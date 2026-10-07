@@ -23,10 +23,7 @@ jobs:
         run: |
           yes | sdkmanager --licenses || true
       - name: Build
-        run: |
-          gradle wrapper --gradle-version 8.2
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        run: gradle assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: apk
