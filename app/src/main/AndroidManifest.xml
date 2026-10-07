@@ -4,6 +4,7 @@
     <application
         android:allowBackup="false"
         android:label="Roblox"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
         <activity
             android:name=".MainActivity"
